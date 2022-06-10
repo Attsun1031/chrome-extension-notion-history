@@ -21,11 +21,8 @@ import {SearchIcon} from "@chakra-ui/icons"
 import _ from "lodash";
 import {format, getTime, sub} from "date-fns";
 import HistoryItem = chrome.history.HistoryItem;
-
-interface Options {
-    daysBefore: number
-    workspace: string
-}
+import { getOptions, saveOptions } from "./storage/options"
+import { getFavorites, saveOneFavorite } from "./storage/favorites"
 
 interface Result {
     results: chrome.history.HistoryItem[]
@@ -37,14 +34,6 @@ const msToString = (ms?: number): string => {
     } else {
         return format(new Date(ms), "yyyy/MM/dd");
     }
-}
-
-const saveOptions = (opts: Options, callback: () => void = () => {}) => {
-    chrome.storage.sync.set(opts, callback);
-}
-
-const getOptions = (defaultOpts: Options, callback: (opts: any) => void) => {
-    chrome.storage.sync.get(defaultOpts, callback);
 }
 
 const isHistoryItemMatchedWord = (word: string, h: chrome.history.HistoryItem): boolean => {
@@ -176,14 +165,14 @@ const Popup = () => {
                                 <InputGroup size="sm">
                                     <NumberInput
                                         value={daysBefore} min={0} max={100} onChange={onChangeDaysBefore}>
-                                        <NumberInputField />
+                                        <NumberInputField/>
                                     </NumberInput>
-                                    <InputRightAddon children='days before' />
+                                    <InputRightAddon children='days before'/>
                                 </InputGroup>
                             </GridItem>
                             <GridItem>
                                 <InputGroup size="sm">
-                                    <Input value={workspace} placeholder="workspace" onChange={onChangeWorkspace} />
+                                    <Input value={workspace} placeholder="workspace" onChange={onChangeWorkspace}/>
                                 </InputGroup>
                             </GridItem>
                             <GridItem>
@@ -205,7 +194,7 @@ const Popup = () => {
                                     <Grid templateColumns='4fr 1fr' gap={6} key={index}>
                                         <GridItem>
                                             {/*<Tooltip label={h.url} placement='right-start'>*/}
-                                                <Link href={h.url} target="_blank">{h.title}</Link>
+                                            <Link href={h.url} target="_blank">{h.title}</Link>
                                             {/*</Tooltip>*/}
                                         </GridItem>
                                         <GridItem>

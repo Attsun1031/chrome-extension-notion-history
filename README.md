@@ -3,7 +3,7 @@ An extension to view your browsing history at notion.
 
 # Install
 ### Download and unzip the artifact
-https://drive.google.com/file/d/1ZBqTkpbcPLW1-4-_tsDgDdBpI_UVaSyk/view?usp=sharing
+https://drive.google.com/file/d/1MUhJbp9FFLHN1eJRTMtmmlrsCIA8qoNR/view?usp=sharing
 
 ### Load into chrome
 You can load downloaded artifact as unpacked chrome extension.

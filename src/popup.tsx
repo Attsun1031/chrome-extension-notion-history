@@ -40,11 +40,11 @@ const msToString = (ms?: number): string => {
 }
 
 const saveOptions = (opts: Options, callback: () => void = () => {}) => {
-    chrome.storage.sync.set(opts, callback);
+    chrome.storage.local.set(opts, callback);
 }
 
 const getOptions = (defaultOpts: Options, callback: (opts: any) => void) => {
-    chrome.storage.sync.get(defaultOpts, callback);
+    chrome.storage.local.get(defaultOpts, callback);
 }
 
 const isHistoryItemMatchedWord = (word: string, h: chrome.history.HistoryItem): boolean => {

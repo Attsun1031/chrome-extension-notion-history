@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Notion History Viewer",
+  "description": "View browser histories in notion",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "tabs",
+    "history",
+    "storage"
+  ]
+}
+

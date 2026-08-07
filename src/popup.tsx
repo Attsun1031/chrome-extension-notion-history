@@ -184,7 +184,7 @@ const Popup = () => {
             <ChakraProvider value={defaultSystem}>
                 <Box w="540px">
                     <Box p={4}>
-                        <Grid templateRows='repeat(2, 1fr)' templateColumns='repeat(3, 1fr)r' gap={6}>
+                        <Grid templateRows='repeat(2, 1fr)' templateColumns='repeat(3, 1fr)' gap={6}>
                             <GridItem>
                                 <Group attached>
                                     <NumberInput.Root

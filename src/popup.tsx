@@ -20,10 +20,13 @@ import {
     Text,
     VStack
 } from "@chakra-ui/react";
-import _ from "lodash";
-import {format, getTime, sub} from "date-fns";
-
-type HistoryItem = chrome.history.HistoryItem;
+import {getTime, sub} from "date-fns";
+import {
+    chromeHistoriesToNotionItems,
+    isHistoryItemMatchedWord,
+    isHistoryItemMatchedWorkspace,
+    msToString
+} from "./history";
 
 // Chakra v3 dropped @chakra-ui/icons, so the search glyph lives here now.
 const SearchIcon = (props: IconProps) => (
@@ -44,82 +47,12 @@ interface Result {
     results: chrome.history.HistoryItem[]
 }
 
-const msToString = (ms?: number): string => {
-    if (ms == undefined) {
-        return "No Date";
-    } else {
-        return format(new Date(ms), "yyyy/MM/dd");
-    }
-}
-
 const saveOptions = (opts: Options, callback: () => void = () => {}) => {
     chrome.storage.local.set(opts, callback);
 }
 
 const getOptions = (defaultOpts: Options, callback: (opts: any) => void) => {
     chrome.storage.local.get(defaultOpts, callback);
-}
-
-const isHistoryItemMatchedWord = (word: string, h: chrome.history.HistoryItem): boolean => {
-    if (_.isEmpty(word)) {
-        return true;
-    } else if (_.isEmpty(h.title)) {
-        return false;
-    } else {
-        return h.title!!.toLowerCase().indexOf(word) >= 0;
-    }
-}
-
-const isHistoryItemMatchedWorkspace = (workspace: string, h: chrome.history.HistoryItem): boolean => {
-    if (_.isEmpty(workspace)) {
-        return true;
-    }
-    const parser = new URL(h.url!!);
-    if (parser.host == `${workspace}.notion.site`) {
-        return true
-    }
-    // pathname has header slash like "/path1/path2", so paths will become ["", "path1", path2"]
-    const paths = parser.pathname.split("/");
-    return paths.length > 1 && paths[1] == workspace;
-}
-
-const notionPageIdPattern = /^[\d\w]{32}$/
-const extractNotionPageIdFromUrl = (url: URL): (string | null) => {
-    const lastPath = _.last(url.pathname.split("/"))?.trim()
-    if (_.isEmpty(lastPath)) {
-        return null
-    }
-    const pageId = _.last(lastPath!!.split("-"))?.trim();
-    if (_.isEmpty(pageId)) {
-        return null
-    }
-    if (notionPageIdPattern.test(pageId!!)) {
-        return pageId!!
-    }
-    return null
-}
-
-const chromeHistoriesToNotionItems = (histories: HistoryItem[]): HistoryItem[] => {
-    const pages = new Set<string>();
-    const items: chrome.history.HistoryItem[] = [];
-    histories.forEach((h) => {
-        if (_.isEmpty(h.url)) {
-            return;
-        }
-        const parser = new URL(h.url!!);
-        if (!parser.host.endsWith("notion.so")) {
-            return;
-        }
-        const pageId = extractNotionPageIdFromUrl(parser);
-        if (_.isEmpty(pageId)) {
-            return;
-        }
-        if (!pages.has(pageId!!)) {
-            pages.add(pageId!!);
-            items.push(h);
-        }
-    })
-    return items;
 }
 
 const Popup = () => {

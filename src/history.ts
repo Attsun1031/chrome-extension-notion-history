@@ -34,6 +34,14 @@ export const isHistoryItemMatchedWorkspace = (workspace: string, h: chrome.histo
     return paths.length > 1 && paths[1] == workspace;
 }
 
+// Notion moved its app domain from notion.so to notion.com, and the old host now
+// 301s to the new one, so the browser records notion.com urls in the history.
+// Both are kept because older history entries still carry the notion.so host.
+const notionHosts = ["notion.so", "notion.com"];
+export const isNotionHost = (host: string): boolean => {
+    return notionHosts.some((h) => host == h || host.endsWith(`.${h}`));
+}
+
 const notionPageIdPattern = /^[\d\w]{32}$/
 export const extractNotionPageIdFromUrl = (url: URL): (string | null) => {
     const lastPath = _.last(url.pathname.split("/"))?.trim()
@@ -58,7 +66,7 @@ export const chromeHistoriesToNotionItems = (histories: HistoryItem[]): HistoryI
             return;
         }
         const parser = new URL(h.url!!);
-        if (!parser.host.endsWith("notion.so")) {
+        if (!isNotionHost(parser.host)) {
             return;
         }
         const pageId = extractNotionPageIdFromUrl(parser);

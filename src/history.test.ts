@@ -3,6 +3,7 @@ import {
     extractNotionPageIdFromUrl,
     isHistoryItemMatchedWord,
     isHistoryItemMatchedWorkspace,
+    isNotionHost,
     msToString
 } from "./history";
 
@@ -72,6 +73,35 @@ describe("isHistoryItemMatchedWorkspace", () => {
     });
 });
 
+describe("isNotionHost", () => {
+    it("accepts the legacy notion.so host", () => {
+        expect(isNotionHost("www.notion.so")).toBe(true);
+    });
+
+    // notion.so now 301s here, so this is what the history actually records.
+    it("accepts the current notion.com host", () => {
+        expect(isNotionHost("www.notion.com")).toBe(true);
+    });
+
+    it("accepts a bare host without a subdomain", () => {
+        expect(isNotionHost("notion.com")).toBe(true);
+    });
+
+    // A plain suffix check would let this through.
+    it("rejects a host that merely ends with the same letters", () => {
+        expect(isNotionHost("evilnotion.com")).toBe(false);
+    });
+
+    it("rejects an unrelated host", () => {
+        expect(isNotionHost("example.com")).toBe(false);
+    });
+
+    // Published sites are a separate domain and stay out of the list.
+    it("rejects a published notion.site host", () => {
+        expect(isNotionHost("myteam.notion.site")).toBe(false);
+    });
+});
+
 describe("extractNotionPageIdFromUrl", () => {
     it("reads the id from a bare page url", () => {
         expect(extractNotionPageIdFromUrl(new URL(`https://www.notion.so/${pageId}`))).toBe(pageId);
@@ -91,6 +121,15 @@ describe("extractNotionPageIdFromUrl", () => {
 
     it("returns null for an id of the wrong length", () => {
         expect(extractNotionPageIdFromUrl(new URL("https://www.notion.so/0123456789abcdef"))).toBeNull();
+    });
+
+    it("reads the id from a notion.com url", () => {
+        expect(extractNotionPageIdFromUrl(new URL(`https://www.notion.com/myteam/My-Page-${pageId}`))).toBe(pageId);
+    });
+
+    // The query string is not part of pathname, so a shared link still resolves.
+    it("ignores a trailing query string", () => {
+        expect(extractNotionPageIdFromUrl(new URL(`https://www.notion.com/${pageId}?source=copy_link`))).toBe(pageId);
     });
 });
 
@@ -123,11 +162,27 @@ describe("chromeHistoriesToNotionItems", () => {
         expect(items).toHaveLength(2);
     });
 
-    // The host check is a suffix match, so a published site is not included.
+    // Published sites live on a separate domain and are not included.
     it("drops notion.site pages", () => {
         const items = chromeHistoriesToNotionItems([
             historyItem(`https://myteam.notion.site/${pageId}`, "Published")
         ]);
         expect(items).toEqual([]);
+    });
+
+    // notion.so redirects to notion.com, so this is what the history now holds.
+    it("keeps notion.com pages", () => {
+        const notionPage = historyItem(`https://www.notion.com/myteam/My-Page-${pageId}`, "Page");
+        expect(chromeHistoriesToNotionItems([notionPage])).toEqual([notionPage]);
+    });
+
+    // A workspace visited across the migration must not show up twice.
+    it("deduplicates the same page seen on both domains", () => {
+        const first = historyItem(`https://www.notion.com/myteam/My-Page-${pageId}`, "New domain");
+        const items = chromeHistoriesToNotionItems([
+            first,
+            historyItem(`https://www.notion.so/myteam/My-Page-${pageId}`, "Old domain")
+        ]);
+        expect(items).toEqual([first]);
     });
 });

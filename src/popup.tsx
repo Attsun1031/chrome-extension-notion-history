@@ -17,8 +17,7 @@ import {
     Link,
     NumberInput,
     NumberInputValueChangeDetails,
-    Text,
-    VStack
+    Text
 } from "@chakra-ui/react";
 import {getTime, sub} from "date-fns";
 import {
@@ -115,7 +114,8 @@ const Popup = () => {
     return (
         <>
             <ChakraProvider value={defaultSystem}>
-                <Box w="540px">
+                {/* The popup width lives in popup.html, since that is the box chrome measures. */}
+                <Box w="100%">
                     <Box p={4}>
                         <Grid templateRows='repeat(2, 1fr)' templateColumns='repeat(3, 1fr)' gap={6}>
                             <GridItem>
@@ -143,20 +143,30 @@ const Popup = () => {
                     </Box>
                     <Box>
                         {histories.results.length > 0 && (
-                            <VStack p={4} gap={4} align="flex-start">
+                            // One grid for the whole list, so every date lands in the same
+                            // column. A grid per row sized each row to its own content, which
+                            // left the dates scattered across the popup.
+                            <Grid
+                                p={4} templateColumns='1fr auto' columnGap={6} rowGap={4}
+                                alignItems="baseline">
                                 {histories.results.map((h, index) => (
-                                    <Grid templateColumns='4fr 1fr' gap={6} key={index}>
-                                        <GridItem>
-                                            {/*<Tooltip label={h.url} placement='right-start'>*/}
-                                                <Link href={h.url} target="_blank">{h.title}</Link>
-                                            {/*</Tooltip>*/}
+                                    <React.Fragment key={index}>
+                                        {/* minW=0 lets the 1fr track drop below the title's own
+                                            width, so a long title wraps instead of widening
+                                            the popup. */}
+                                        <GridItem minW={0}>
+                                            <Link href={h.url} target="_blank" overflowWrap="anywhere">
+                                                {h.title}
+                                            </Link>
                                         </GridItem>
                                         <GridItem>
-                                            <Text fontSize="xs" textAlign="right">{msToString(h.lastVisitTime)}</Text>
+                                            <Text fontSize="xs" whiteSpace="nowrap">
+                                                {msToString(h.lastVisitTime)}
+                                            </Text>
                                         </GridItem>
-                                    </Grid>)
-                                )}
-                            </VStack>
+                                    </React.Fragment>
+                                ))}
+                            </Grid>
                         )}
                         {histories.results.length == 0 && (
                             <Container><Text>Loading...</Text></Container>

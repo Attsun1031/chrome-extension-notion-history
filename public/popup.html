@@ -3,6 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <title>Notion History Viewer</title>
+    <style>
+      /* Chrome sizes the popup from the document box, not from whatever the
+         react tree happens to render, and it caps the result at 800px. Pinning
+         the width here is what keeps the popup as wide as the content instead
+         of stretching to that cap and leaving an empty band on the right. */
+      html,
+      body {
+        margin: 0;
+        width: 540px;
+        overflow-x: hidden;
+      }
+    </style>
     <script src="js/vendor.js"></script>
   </head>
   <body>

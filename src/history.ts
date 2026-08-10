@@ -29,9 +29,14 @@ export const isHistoryItemMatchedWorkspace = (workspace: string, h: chrome.histo
     if (parser.host == `${workspace}.notion.site`) {
         return true
     }
-    // pathname has header slash like "/path1/path2", so paths will become ["", "path1", path2"]
-    const paths = parser.pathname.split("/");
-    return paths.length > 1 && paths[1] == workspace;
+    // The workspace used to always be the first path segment, but some routes
+    // now prefix it (app.notion.com/p/{workspace}) and the prefix is not always
+    // there. Comparing every segment covers both shapes without enumerating the
+    // routes notion may add later. Segments are compared whole, so a workspace
+    // name that merely appears inside a page slug does not match.
+    // pathname has a leading slash like "/path1/path2", so the split yields an
+    // empty first element, which an empty workspace never reaches.
+    return parser.pathname.split("/").some((p) => p == workspace);
 }
 
 // Notion moved its app domain from notion.so to notion.com, and the old host now

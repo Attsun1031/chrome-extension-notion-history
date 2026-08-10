@@ -71,6 +71,33 @@ describe("isHistoryItemMatchedWorkspace", () => {
     it("does not match a url without a workspace segment", () => {
         expect(isHistoryItemMatchedWorkspace("myteam", historyItem("https://www.notion.so/"))).toBe(false);
     });
+
+    // app.notion.com puts a /p/ in front of the workspace.
+    it("matches the workspace behind a route prefix", () => {
+        expect(isHistoryItemMatchedWorkspace(
+            "myteam", historyItem(`https://app.notion.com/p/myteam/My-Page-${pageId}`))).toBe(true);
+    });
+
+    it("matches a workspace root url behind a route prefix", () => {
+        expect(isHistoryItemMatchedWorkspace("myteam", historyItem("https://app.notion.com/p/myteam"))).toBe(true);
+    });
+
+    // The prefix is not always present, so the unprefixed form still has to work.
+    it("matches the workspace on app.notion.com without a prefix", () => {
+        expect(isHistoryItemMatchedWorkspace(
+            "myteam", historyItem(`https://app.notion.com/myteam/My-Page-${pageId}`))).toBe(true);
+    });
+
+    it("does not match another workspace behind a route prefix", () => {
+        expect(isHistoryItemMatchedWorkspace(
+            "myteam", historyItem(`https://app.notion.com/p/other/My-Page-${pageId}`))).toBe(false);
+    });
+
+    // Segments are compared whole, so a slug containing the name is not a match.
+    it("does not match when the name only appears inside a page slug", () => {
+        expect(isHistoryItemMatchedWorkspace(
+            "myteam", historyItem(`https://app.notion.com/p/other/myteam-notes-${pageId}`))).toBe(false);
+    });
 });
 
 describe("isNotionHost", () => {
@@ -85,6 +112,10 @@ describe("isNotionHost", () => {
 
     it("accepts a bare host without a subdomain", () => {
         expect(isNotionHost("notion.com")).toBe(true);
+    });
+
+    it("accepts the app subdomain", () => {
+        expect(isNotionHost("app.notion.com")).toBe(true);
     });
 
     // A plain suffix check would let this through.
@@ -173,6 +204,11 @@ describe("chromeHistoriesToNotionItems", () => {
     // notion.so redirects to notion.com, so this is what the history now holds.
     it("keeps notion.com pages", () => {
         const notionPage = historyItem(`https://www.notion.com/myteam/My-Page-${pageId}`, "Page");
+        expect(chromeHistoriesToNotionItems([notionPage])).toEqual([notionPage]);
+    });
+
+    it("keeps app.notion.com pages behind a route prefix", () => {
+        const notionPage = historyItem(`https://app.notion.com/p/myteam/My-Page-${pageId}`, "Page");
         expect(chromeHistoriesToNotionItems([notionPage])).toEqual([notionPage]);
     });
 

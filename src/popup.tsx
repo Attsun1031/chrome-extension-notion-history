@@ -1,26 +1,42 @@
 import React, {ChangeEvent, useEffect, useState} from "react";
-import ReactDOM from "react-dom";
+import {createRoot} from "react-dom/client";
 import {
     Box,
     Button,
     ChakraProvider,
     Container,
+    defaultSystem,
     Grid,
     GridItem,
+    Group,
+    Icon,
+    IconProps,
     Input,
+    InputAddon,
     InputGroup,
-    InputLeftElement,
-    InputRightAddon,
     Link,
     NumberInput,
-    NumberInputField,
+    NumberInputValueChangeDetails,
     Text,
     VStack
 } from "@chakra-ui/react";
-import {SearchIcon} from "@chakra-ui/icons"
-import _ from "lodash";
-import {format, getTime, sub} from "date-fns";
-import HistoryItem = chrome.history.HistoryItem;
+import {getTime, sub} from "date-fns";
+import {
+    chromeHistoriesToNotionItems,
+    isHistoryItemMatchedWord,
+    isHistoryItemMatchedWorkspace,
+    msToString
+} from "./history";
+
+// Chakra v3 dropped @chakra-ui/icons, so the search glyph lives here now.
+const SearchIcon = (props: IconProps) => (
+    <Icon
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <circle cx="11" cy="11" r="8"/>
+        <path d="m21 21-4.3-4.3"/>
+    </Icon>
+);
 
 interface Options {
     daysBefore: number
@@ -31,82 +47,12 @@ interface Result {
     results: chrome.history.HistoryItem[]
 }
 
-const msToString = (ms?: number): string => {
-    if (ms == undefined) {
-        return "No Date";
-    } else {
-        return format(new Date(ms), "yyyy/MM/dd");
-    }
-}
-
 const saveOptions = (opts: Options, callback: () => void = () => {}) => {
     chrome.storage.local.set(opts, callback);
 }
 
 const getOptions = (defaultOpts: Options, callback: (opts: any) => void) => {
     chrome.storage.local.get(defaultOpts, callback);
-}
-
-const isHistoryItemMatchedWord = (word: string, h: chrome.history.HistoryItem): boolean => {
-    if (_.isEmpty(word)) {
-        return true;
-    } else if (_.isEmpty(h.title)) {
-        return false;
-    } else {
-        return h.title!!.toLowerCase().indexOf(word) >= 0;
-    }
-}
-
-const isHistoryItemMatchedWorkspace = (workspace: string, h: chrome.history.HistoryItem): boolean => {
-    if (_.isEmpty(workspace)) {
-        return true;
-    }
-    const parser = new URL(h.url!!);
-    if (parser.host == `${workspace}.notion.site`) {
-        return true
-    }
-    // pathname has header slash like "/path1/path2", so paths will become ["", "path1", path2"]
-    const paths = parser.pathname.split("/");
-    return paths.length > 1 && paths[1] == workspace;
-}
-
-const notionPageIdPattern = /^[\d\w]{32}$/
-const extractNotionPageIdFromUrl = (url: URL): (string | null) => {
-    const lastPath = _.last(url.pathname.split("/"))?.trim()
-    if (_.isEmpty(lastPath)) {
-        return null
-    }
-    const pageId = _.last(lastPath!!.split("-"))?.trim();
-    if (_.isEmpty(pageId)) {
-        return null
-    }
-    if (notionPageIdPattern.test(pageId!!)) {
-        return pageId!!
-    }
-    return null
-}
-
-const chromeHistoriesToNotionItems = (histories: HistoryItem[]): HistoryItem[] => {
-    const pages = new Set<string>();
-    const items: chrome.history.HistoryItem[] = [];
-    histories.forEach((h) => {
-        if (_.isEmpty(h.url)) {
-            return;
-        }
-        const parser = new URL(h.url!!);
-        if (!parser.host.endsWith("notion.so")) {
-            return;
-        }
-        const pageId = extractNotionPageIdFromUrl(parser);
-        if (_.isEmpty(pageId)) {
-            return;
-        }
-        if (!pages.has(pageId!!)) {
-            pages.add(pageId!!);
-            items.push(h);
-        }
-    })
-    return items;
 }
 
 const Popup = () => {
@@ -118,9 +64,9 @@ const Popup = () => {
     const [histories, setHistories] = useState<Result>({results: []});
 
     // event handlers
-    const onChangeDaysBefore = (valueAsString: string, valueAsNumber: number) => {
-        if (valueAsNumber > 0) {
-            setDaysBefore(valueAsNumber);
+    const onChangeDaysBefore = (details: NumberInputValueChangeDetails) => {
+        if (details.valueAsNumber > 0) {
+            setDaysBefore(details.valueAsNumber);
         }
     }
     const onChangeWorkspace = (v: ChangeEvent<HTMLInputElement>) => {
@@ -168,39 +114,36 @@ const Popup = () => {
 
     return (
         <>
-            <ChakraProvider>
+            <ChakraProvider value={defaultSystem}>
                 <Box w="540px">
                     <Box p={4}>
-                        <Grid templateRows='repeat(2, 1fr)' templateColumns='repeat(3, 1fr)r' gap={6}>
+                        <Grid templateRows='repeat(2, 1fr)' templateColumns='repeat(3, 1fr)' gap={6}>
                             <GridItem>
-                                <InputGroup size="sm">
-                                    <NumberInput
-                                        value={daysBefore} min={0} max={100} onChange={onChangeDaysBefore}>
-                                        <NumberInputField />
-                                    </NumberInput>
-                                    <InputRightAddon children='days before' />
-                                </InputGroup>
+                                <Group attached>
+                                    <NumberInput.Root
+                                        size="sm" value={String(daysBefore)} min={0} max={100}
+                                        onValueChange={onChangeDaysBefore}>
+                                        <NumberInput.Input />
+                                    </NumberInput.Root>
+                                    <InputAddon>days before</InputAddon>
+                                </Group>
                             </GridItem>
                             <GridItem>
-                                <InputGroup size="sm">
-                                    <Input value={workspace} placeholder="workspace" onChange={onChangeWorkspace} />
-                                </InputGroup>
+                                <Input size="sm" value={workspace} placeholder="workspace" onChange={onChangeWorkspace} />
                             </GridItem>
                             <GridItem>
-                                <Button colorScheme="teal" size="xs" onClick={onClickSave}>Save</Button>
+                                <Button colorPalette="teal" size="xs" onClick={onClickSave}>Save</Button>
                             </GridItem>
                             <GridItem colSpan={3}>
-                                <InputGroup size="sm">
-                                    <InputLeftElement
-                                        pointerEvents="none" children={<SearchIcon color="gray.300" pb={1}/>}/>
-                                    <Input placeholder="Search keyword" onChange={onChangeSearchInput}/>
+                                <InputGroup startElement={<SearchIcon color="gray.300"/>}>
+                                    <Input size="sm" placeholder="Search keyword" onChange={onChangeSearchInput}/>
                                 </InputGroup>
                             </GridItem>
                         </Grid>
                     </Box>
                     <Box>
                         {histories.results.length > 0 && (
-                            <VStack p={4} spacing={4} align="left">
+                            <VStack p={4} gap={4} align="flex-start">
                                 {histories.results.map((h, index) => (
                                     <Grid templateColumns='4fr 1fr' gap={6} key={index}>
                                         <GridItem>
@@ -209,7 +152,7 @@ const Popup = () => {
                                             {/*</Tooltip>*/}
                                         </GridItem>
                                         <GridItem>
-                                            <Text fontSize="xs" align="right">{msToString(h.lastVisitTime)}</Text>
+                                            <Text fontSize="xs" textAlign="right">{msToString(h.lastVisitTime)}</Text>
                                         </GridItem>
                                     </Grid>)
                                 )}
@@ -225,9 +168,8 @@ const Popup = () => {
     )
 };
 
-ReactDOM.render(
+createRoot(document.getElementById("root")!!).render(
     <React.StrictMode>
         <Popup/>
-    </React.StrictMode>,
-    document.getElementById("root")
+    </React.StrictMode>
 );
